@@ -15,6 +15,7 @@ const LANGUAGES = [
 ]
 
 export default function App() {
+  // ── ALL HOOKS MUST BE DECLARED FIRST, BEFORE ANY RETURN ──
   const [messages, setMessages] = useState([
     { role: "assistant", content: "Hi! I'm ClassMate. You can type a question or tap the camera to photo your homework!" }
   ])
@@ -24,6 +25,8 @@ export default function App() {
   const [imageFile, setImageFile] = useState(null)
   const [language, setLanguage] = useState("English")
   const [showLangPicker, setShowLangPicker] = useState(false)
+  const [studentName, setStudentName] = useState("")
+  const [nameSet, setNameSet] = useState(false)
   const bottomRef = useRef(null)
   const fileInputRef = useRef(null)
 
@@ -31,7 +34,6 @@ export default function App() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
 
-  // Update greeting when language changes
   useEffect(() => {
     const greetings = {
       English:    "Hi! I'm ClassMate. Type a question or tap the camera to photo your homework!",
@@ -84,7 +86,8 @@ export default function App() {
         const formData = new FormData()
         formData.append("file", imageFile)
         formData.append("message", input || "Help me with this problem")
-        formData.append("language", language)   // send language
+        formData.append("language", language)
+        formData.append("student_name", studentName)
 
         const { data } = await axios.post("/api/chat-with-image", formData, {
           headers: { "Content-Type": "multipart/form-data" }
@@ -100,7 +103,8 @@ export default function App() {
         const { data } = await axios.post("/api/chat", {
           message: input,
           history: history.slice(0, -1),
-          language: language   // send language
+          language: language,        // ← fixed: missing comma was here
+          student_name: studentName
         })
         reply = data.reply
       }
@@ -119,6 +123,53 @@ export default function App() {
 
   const currentLang = LANGUAGES.find(l => l.code === language)
 
+  // ── CONDITIONAL RETURN AFTER ALL HOOKS ──
+  if (!nameSet) return (
+    <div style={{
+      display: "flex", flexDirection: "column",
+      alignItems: "center", justifyContent: "center",
+      height: "100vh", fontFamily: "system-ui",
+      background: "#f9f9f9", padding: "40px"
+    }}>
+      <div style={{
+        background: "white", borderRadius: "16px",
+        padding: "32px", maxWidth: "320px", width: "100%",
+        border: "1px solid #eee", textAlign: "center"
+      }}>
+        <div style={{ fontSize: "40px", marginBottom: "16px" }}>📚</div>
+        <h2 style={{ margin: "0 0 8px", color: "#1a1a2e" }}>Welcome to ClassMate</h2>
+        <p style={{ color: "#666", fontSize: "14px", margin: "0 0 24px" }}>
+          Your AI tutor powered by Gemma 4
+        </p>
+        <input
+          placeholder="Enter your name"
+          value={studentName}
+          onChange={e => setStudentName(e.target.value)}
+          onKeyDown={e => e.key === "Enter" && studentName.trim() && setNameSet(true)}
+          style={{
+            width: "100%", padding: "12px 16px",
+            borderRadius: "12px", border: "1px solid #ddd",
+            fontSize: "15px", outline: "none",
+            marginBottom: "12px", boxSizing: "border-box"
+          }}
+          autoFocus
+        />
+        <button
+          onClick={() => studentName.trim() && setNameSet(true)}
+          style={{
+            width: "100%", padding: "12px",
+            background: "#1a1a2e", color: "white",
+            border: "none", borderRadius: "12px",
+            fontSize: "15px", cursor: "pointer"
+          }}
+        >
+          Start learning
+        </button>
+      </div>
+    </div>
+  )
+
+  // ── MAIN CHAT UI ──
   return (
     <div style={{
       display: "flex",
@@ -142,26 +193,41 @@ export default function App() {
       }}>
         <span style={{ fontWeight: 600, fontSize: "18px" }}>ClassMate</span>
 
-        {/* Language picker button */}
-        <button
-          onClick={() => setShowLangPicker(!showLangPicker)}
-          style={{
-            background: "rgba(255,255,255,0.15)",
-            border: "1px solid rgba(255,255,255,0.3)",
-            color: "white",
-            padding: "6px 12px",
-            borderRadius: "20px",
-            cursor: "pointer",
-            fontSize: "13px",
-            display: "flex",
-            alignItems: "center",
-            gap: "6px"
-          }}
-        >
-          <span style={{ fontSize: "16px" }}>{currentLang.flag}</span>
-          {currentLang.label}
-          <span style={{ fontSize: "10px", opacity: 0.7 }}>▼</span>
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          {/* Language picker button */}
+          <button
+            onClick={() => setShowLangPicker(!showLangPicker)}
+            style={{
+              background: "rgba(255,255,255,0.15)",
+              border: "1px solid rgba(255,255,255,0.3)",
+              color: "white",
+              padding: "6px 12px",
+              borderRadius: "20px",
+              cursor: "pointer",
+              fontSize: "13px",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px"
+            }}
+          >
+            <span style={{ fontSize: "16px" }}>{currentLang.flag}</span>
+            {currentLang.label}
+            <span style={{ fontSize: "10px", opacity: 0.7 }}>▼</span>
+          </button>
+
+          {/* Teacher view link */}
+          <a
+            href="/dashboard"
+            style={{
+              fontSize: "12px",
+              color: "rgba(255,255,255,0.6)",
+              textDecoration: "none",
+              marginLeft: "4px"
+            }}
+          >
+            Teacher view
+          </a>
+        </div>
       </div>
 
       {/* Language dropdown */}
