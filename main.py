@@ -4,6 +4,7 @@ from pydantic import BaseModel
 import httpx
 import base64
 from typing import Optional
+from fastapi import UploadFile, File, Form
 
 app = FastAPI()
 
@@ -18,87 +19,94 @@ app.add_middleware(
 OLLAMA_URL = "http://localhost:11434/api/chat"
 MODEL = "gemma4:e4b"
 
-SYSTEM_PROMPT = """You are ClassMate, a warm and encouraging Socratic tutor 
-for students in under-resourced schools. Your rules:
+def get_system_prompt(language: str = "English") -> str:
+    return f"""You are ClassMate, a warm and encouraging Socratic tutor for students in under-resourced schools.
+You must ALWAYS respond in {language}. Even if the student writes in a different language, your response must be in {language}.
+Your rules:
 - NEVER give the answer directly
-- Always respond with ONE guiding question
-- Keep language simple and friendly
-- If the student is frustrated, acknowledge it before asking
-- Maximum 2 sentences in your response"""
+- Always respond with ONE short guiding question
+- Keep language simple, friendly, and age-appropriate
+- If the student is frustrated, acknowledge their feeling first
+- Maximum 2 sentences in your response
+- Always end with a question mark"""
 
-class ChatMessage(BaseModel):
-    message: str
-    history: list = []
+
 
 class ChatResponse(BaseModel):
     reply: str
 
+class ChatMessage(BaseModel):
+    message: str
+    history: list = []
+    language: str = "English"   # new field
+
 @app.post("/chat", response_model=ChatResponse)
 async def chat(body: ChatMessage):
-    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
-    
+    messages = [{"role": "system", "content": get_system_prompt(body.language)}]
+
     for turn in body.history:
         messages.append(turn)
-    
+
     messages.append({"role": "user", "content": body.message})
-    
+
     async with httpx.AsyncClient(timeout=60) as client:
         response = await client.post(OLLAMA_URL, json={
             "model": MODEL,
             "messages": messages,
             "stream": False,
+            "think": False,
             "options": {
                 "temperature": 0.7,
                 "num_predict": 150,
-               
-            },
-            "think": False
+            }
         })
-    
+
     data = response.json()
-    
-    # Debug line — add this temporarily
-    print("RAW OLLAMA RESPONSE:", data)
-    
-    reply = data["message"]["content"]
-    
+    reply = data["message"].get("content", "")
     if not reply.strip():
-        # Fallback to thinking if content is empty
-        reply = data["message"].get("thinking", "I'm thinking...")
-    
+        reply = data["message"].get("thinking", "Let me think...")
+
     return ChatResponse(reply=reply)
-    
 
 
 @app.post("/chat-with-image", response_model=ChatResponse)
 async def chat_with_image(
-    message: str,
+    message: str = Form(default="Help me with this problem"),
+    language: str = Form(default="English"),   # new field
     file: UploadFile = File(...)
 ):
-    # Read and encode the image (homework photo)
     image_bytes = await file.read()
     image_b64 = base64.b64encode(image_bytes).decode("utf-8")
-    
+
     messages = [
-        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "system", "content": get_system_prompt(language)},
         {
             "role": "user",
-            "content": message or "Help me with this problem",
-            "images": [image_b64]   # Gemma 4 multimodal
+            "content": message,
+            "images": [image_b64]
         }
     ]
-    
-    async with httpx.AsyncClient(timeout=60) as client:
+
+    async with httpx.AsyncClient(timeout=120) as client:
         response = await client.post(OLLAMA_URL, json={
             "model": MODEL,
             "messages": messages,
             "stream": False,
-            "options": {"temperature": 0.7, "num_predict": 150}
+            "think": False,
+            "options": {
+                "temperature": 0.7,
+                "num_predict": 150,
+            }
         })
-    
+
     data = response.json()
-    reply = data["message"]["content"]
-    
+    if "error" in data:
+        return ChatResponse(reply=f"Vision error: {data['error']}")
+
+    reply = data["message"].get("content", "")
+    if not reply.strip():
+        reply = data["message"].get("thinking", "Let me look at that...")
+
     return ChatResponse(reply=reply)
 
 @app.get("/health")
