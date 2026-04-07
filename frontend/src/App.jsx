@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react"
 import axios from "axios"
+import { cacheResponse, findCachedResponse, getCacheSize } from './cache'
 
 const LANGUAGES = [
   { code: "English",    label: "English",    flag: "🇺🇸" },
@@ -15,7 +16,7 @@ const LANGUAGES = [
 ]
 
 export default function App() {
-  // ── ALL HOOKS MUST BE DECLARED FIRST, BEFORE ANY RETURN ──
+  const [isOnline, setIsOnline] = useState(navigator.onLine)
   const [messages, setMessages] = useState([
     { role: "assistant", content: "Hi! I'm ClassMate. You can type a question or tap the camera to photo your homework!" }
   ])
@@ -27,8 +28,20 @@ export default function App() {
   const [showLangPicker, setShowLangPicker] = useState(false)
   const [studentName, setStudentName] = useState("")
   const [nameSet, setNameSet] = useState(false)
+  const [cacheCount, setCacheCount] = useState(getCacheSize())
   const bottomRef = useRef(null)
   const fileInputRef = useRef(null)
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true)
+    const handleOffline = () => setIsOnline(false)
+    window.addEventListener('online', handleOnline)
+    window.addEventListener('offline', handleOffline)
+    return () => {
+      window.removeEventListener('online', handleOnline)
+      window.removeEventListener('offline', handleOffline)
+    }
+  }, [])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -82,39 +95,50 @@ export default function App() {
     try {
       let reply
 
-      if (imageFile) {
+      if (!isOnline) {
+        const cached = findCachedResponse(input, language)
+        reply = cached
+          ? `${cached}\n\n*(from cache — you are offline)*`
+          : "You're offline and I don't have a cached answer for this yet. Ask me again when you're connected!"
+
+      } else if (imageFile) {
         const formData = new FormData()
         formData.append("file", imageFile)
         formData.append("message", input || "Help me with this problem")
         formData.append("language", language)
         formData.append("student_name", studentName)
-
         const { data } = await axios.post("/api/chat-with-image", formData, {
           headers: { "Content-Type": "multipart/form-data" }
         })
         reply = data.reply
         clearImage()
+        cacheResponse(input || "image question", reply, language)
+        setCacheCount(getCacheSize())
+
       } else {
         const history = updatedMessages
-          .slice(1)
-          .slice(-10)
+          .slice(1).slice(-10)
           .map(m => ({ role: m.role, content: m.content }))
-
         const { data } = await axios.post("/api/chat", {
           message: input,
           history: history.slice(0, -1),
-          language: language,        // ← fixed: missing comma was here
+          language: language,
           student_name: studentName
         })
         reply = data.reply
+        cacheResponse(input, reply, language)
+        setCacheCount(getCacheSize())
       }
 
       setMessages(prev => [...prev, { role: "assistant", content: reply }])
 
     } catch (err) {
+      const cached = findCachedResponse(input, language)
       setMessages(prev => [...prev, {
         role: "assistant",
-        content: "Sorry, I'm having trouble connecting. Are you offline?"
+        content: cached
+          ? `${cached}\n\n*(from cache — connection lost)*`
+          : "Sorry, I lost connection. Try again in a moment!"
       }])
     } finally {
       setLoading(false)
@@ -123,7 +147,6 @@ export default function App() {
 
   const currentLang = LANGUAGES.find(l => l.code === language)
 
-  // ── CONDITIONAL RETURN AFTER ALL HOOKS ──
   if (!nameSet) return (
     <div style={{
       display: "flex", flexDirection: "column",
@@ -169,7 +192,6 @@ export default function App() {
     </div>
   )
 
-  // ── MAIN CHAT UI ──
   return (
     <div style={{
       display: "flex",
@@ -181,6 +203,20 @@ export default function App() {
       background: "#f9f9f9",
       position: "relative"
     }}>
+
+      {/* Offline banner */}
+      {!isOnline && (
+        <div style={{
+          background: "#f59e0b",
+          color: "white",
+          padding: "8px 20px",
+          fontSize: "13px",
+          textAlign: "center",
+          fontWeight: 500
+        }}>
+          You are offline — showing cached responses
+        </div>
+      )}
 
       {/* Header */}
       <div style={{
@@ -194,7 +230,7 @@ export default function App() {
         <span style={{ fontWeight: 600, fontSize: "18px" }}>ClassMate</span>
 
         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          {/* Language picker button */}
+          {/* Language picker */}
           <button
             onClick={() => setShowLangPicker(!showLangPicker)}
             style={{
@@ -215,7 +251,7 @@ export default function App() {
             <span style={{ fontSize: "10px", opacity: 0.7 }}>▼</span>
           </button>
 
-          {/* Teacher view link */}
+          {/* Teacher view */}
           <a
             href="/dashboard"
             style={{
@@ -227,6 +263,15 @@ export default function App() {
           >
             Teacher view
           </a>
+
+          {/* Cache count */}
+          <span style={{
+            fontSize: "11px",
+            color: "rgba(255,255,255,0.4)",
+            marginLeft: "4px"
+          }}>
+            {cacheCount} cached
+          </span>
         </div>
       </div>
 

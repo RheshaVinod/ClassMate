@@ -67,3 +67,67 @@ frontend/dist/workbox-*.js
 *.safetensors
 weights/
 models/
+
+# ClassMate specific
+classmate.db
+classmate-model/
+classmate-gemma4/
+classmate-gemma4-gguf/
+classmate-checkpoints/
+generate-icons.mjs
+
+# Fine-tuning outputs
+training_data.jsonl
+finetune.py
+*.jsonl
+
+# API keys and secrets
+secrets.py
+config.py
+*.pem
+*.key
+*.cert
+
+# ngrok
+ngrok.yml
+.ngrok2/
+
+# Test images uploaded during development
+test.jpg
+test.png
+test.jpeg
+*.test.jpg
+
+# Python virtual env alternatives
+.conda/
+conda-env/
+__pypackages__/
+
+# Jupyter notebooks (keep .ipynb but ignore checkpoints)
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/
+
+# Coverage and testing
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+tmp/
+temp/
+
+# Large data files
+*.csv
+*.parquet
+*.arrow
+data/
+
+# OS
+Thumbs.db
+ehthumbs.db
+Desktop.ini
