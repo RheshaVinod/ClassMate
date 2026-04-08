@@ -2,7 +2,7 @@
 
 > *Every student deserves a tutor. ClassMate makes that possible.*
 
-ClassMate is a Progressive Web App powered by **Gemma 4** that gives every student their own personal Socratic tutor — one that works offline, speaks their language, and never just hands them the answer.
+ClassMate is a Progressive Web App powered by **Gemma 4** that gives every student their own personal Socratic tutor,one that works offline, speaks their language, and never just hands them the answer.
 
 Built for the **[Gemma 4 Good Hackathon](https://www.kaggle.com/competitions/gemma-4-good-hackathon)** on Kaggle.
 
@@ -18,7 +18,7 @@ Built for the **[Gemma 4 Good Hackathon](https://www.kaggle.com/competitions/gem
 
 ## The Problem
 
-In thousands of schools across the world — rural India, sub-Saharan Africa, underserved neighborhoods in the US — students sit in overcrowded classrooms with one teacher for every 50 kids. When they go home, there is no tutor, no extra help, and often no reliable internet.
+In thousands of schools across the world ,rural India, sub-Saharan Africa, underserved neighborhoods in the US,students sit in overcrowded classrooms with one teacher for every 50 kids. When they go home, there is no tutor, no extra help, and often no reliable internet.
 
 **Personalized education has always been a privilege. ClassMate changes that.**
 
@@ -46,7 +46,7 @@ In thousands of schools across the world — rural India, sub-Saharan Africa, un
 Gemma 4 E4B was the only model capable of all three things ClassMate needs at this size: multimodal vision, native multilingual output, and efficient local inference. No cloud. No cost. No data leaves the device.
 
 ### Why Ollama?
-Ollama makes local Gemma 4 deployment a single command. Student conversations stay on the school's hardware — essential for communities where data privacy is non-negotiable.
+Ollama makes local Gemma 4 deployment a single command. Student conversations stay on the school's hardware , essential for communities where data privacy is non-negotiable.
 
 ---
 
